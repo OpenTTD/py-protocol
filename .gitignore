@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+/.coverage
+/.env
+/build
+/dist
+/htmlcov
+/openttd_protocol.egg-info
+/VERSION
