@@ -2,8 +2,9 @@ import struct
 
 from .exceptions import PacketTooBig
 
-SEND_TCP_MTU = 32767
-SEND_UDP_MTU = 1460
+SEND_TCP_MTU = 32767  # Since OpenTTD 1.12, OpenTTD clients support this MTU for TCP.
+SEND_TCP_COMPAT_MTU = 1460  # Before OpenTTD 1.12, OpenTTD client support this MTU for TCP.
+SEND_UDP_MTU = 1460  # OpenTTD clients support this MTU for UDP.
 
 
 def write_uint8(data: bytearray, value: int) -> None:
@@ -26,6 +27,11 @@ def write_uint64(data: bytearray, value: int) -> None:
     data += struct.pack("<Q", value)
 
 
+def write_bytes(data: bytearray, value: bytes) -> None:
+    """Write bytes in the packet."""
+    data += value
+
+
 def write_string(data: bytearray, value: str) -> None:
     """Write a string in the packet."""
     data += value.encode() + b"\x00"
@@ -40,7 +46,7 @@ def write_init(type: int) -> bytearray:
     return data
 
 
-def write_presend(data: bytearray, max_size: int = SEND_TCP_MTU) -> bytes:
+def write_presend(data: bytearray, max_size: int) -> bytes:
     """Prepare a packet for sending. Returns an immutable list of bytes to send."""
     if len(data) > max_size:
         raise PacketTooBig(len(data))
