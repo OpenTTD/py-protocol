@@ -134,7 +134,7 @@ class TCPProtocol(asyncio.Protocol):
             data = await self._queue.get()
 
             try:
-                type, kwargs = self.receive_packet(self.source, data)
+                packet_type, kwargs = self.receive_packet(self.source, data)
             except PacketInvalid as err:
                 log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
                 self.transport.close()
@@ -148,7 +148,7 @@ class TCPProtocol(asyncio.Protocol):
                 return
 
             try:
-                await getattr(self._callback, f"receive_{type.name}")(self.source, **kwargs)
+                await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
             except SocketClosed:
                 # The other side is closing the connection; it can happen
                 # there is still some writes in the buffer, so force a close
@@ -159,7 +159,7 @@ class TCPProtocol(asyncio.Protocol):
                 # Our coroutine is cancelled, pass it on the the caller.
                 raise
             except Exception:
-                log.exception(f"Internal error: receive_{type.name} triggered an exception")
+                log.exception(f"Internal error: receive_{packet_type.name} triggered an exception")
                 self.transport.abort()
                 return
 
