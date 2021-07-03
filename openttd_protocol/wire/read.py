@@ -65,7 +65,13 @@ def read_bytes(data: memoryview, length: int) -> Tuple[bytes, memoryview]:
 def read_string(data: memoryview) -> Tuple[str, memoryview]:
     """Read a (nul-terminated) string from the data buffer."""
     try:
-        index = data.obj.index(b"\x00")
-    except ValueError:
+        # We cannot used index() without converting it to a bytes first.
+        # Given we use a memoryview to prevent copies being made all over the
+        # place, that is rather unwanted. So, instead, look for the
+        # nul-terminator manually.
+        index = 0
+        while data[index] != 0:
+            index += 1
+    except IndexError:
         raise PacketTooShort from None
     return data[0:index].tobytes().decode(), data[index + 1 :]
