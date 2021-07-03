@@ -33,6 +33,7 @@ DAYS_TILL_ORIGINAL_BASE_YEAR = (
     365 * ORIGINAL_BASE_YEAR + ORIGINAL_BASE_YEAR // 4 - ORIGINAL_BASE_YEAR // 100 + ORIGINAL_BASE_YEAR // 400
 )
 
+
 class PacketCoordinatorType(enum.IntEnum):
     PACKET_COORDINATOR_SERVER_ERROR = 0
     PACKET_COORDINATOR_CLIENT_REGISTER = 1
@@ -174,7 +175,11 @@ class CoordinatorProtocol(TCPProtocol):
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in CLIENT_LISTING; remaining: ", len(data))
 
-        return {"protocol_version": protocol_version, "game_info_version": game_info_version, "openttd_version": openttd_version}
+        return {
+            "protocol_version": protocol_version,
+            "game_info_version": game_info_version,
+            "openttd_version": openttd_version,
+        }
 
     async def send_PACKET_COORDINATOR_SERVER_ERROR(self, error_no, error_detail):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_SERVER_ERROR)

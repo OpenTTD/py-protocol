@@ -117,7 +117,12 @@ class TCPProtocol(asyncio.Protocol):
         while len(data) > 2:
             length, _ = read_uint16(data)
             if length < 2:
-                log.info("Dropping invalid packet from %s:%d: impossible length field of %d in packet", self.source.ip, self.source.port, length)
+                log.info(
+                    "Dropping invalid packet from %s:%d: impossible length field of %d in packet",
+                    self.source.ip,
+                    self.source.port,
+                    length,
+                )
                 self.transport.close()
                 return b""
 
