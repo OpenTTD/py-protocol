@@ -110,7 +110,8 @@ class TCPProtocol(asyncio.Protocol):
             data = self._detect_source_ip_port(data)
             self.new_connection = False
 
-        self._data = self.receive_data(self._queue, self._data + data)
+        data = memoryview(self._data + data)
+        self._data = self.receive_data(self._queue, data)
 
     def receive_data(self, queue, data):
         while len(data) > 2:
@@ -126,7 +127,7 @@ class TCPProtocol(asyncio.Protocol):
             queue.put_nowait(data[0:length])
             data = data[length:]
 
-        return data
+        return data.tobytes()
 
     async def _process_queue(self):
         while True:
