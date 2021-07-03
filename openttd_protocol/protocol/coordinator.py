@@ -102,6 +102,8 @@ class CoordinatorProtocol(TCPProtocol):
                 md5sum, data = read_bytes(data, 16)
 
                 newgrfs.append((newgrf_id, md5sum))
+        else:
+            newgrfs = None
 
         if game_info_version >= 3:
             game_date, data = read_uint32(data)
@@ -111,6 +113,10 @@ class CoordinatorProtocol(TCPProtocol):
             companies_max, data = read_uint8(data)
             companies_on, data = read_uint8(data)
             spectators_max, data = read_uint8(data)
+        else:
+            companies_max = None
+            companies_on = None
+            spectators_max = None
 
         if game_info_version >= 1:
             name, data = read_string(data)
