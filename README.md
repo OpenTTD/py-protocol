@@ -14,4 +14,38 @@ It mostly is meant to be used for OpenTTD's backend services, like [BaNaNaS serv
 
 `pip install openttd-protocol`
 
-TODO -- Specify more/better how to use this library
+Now in your Python code you can import the protocol.
+Example:
+
+```python
+import asyncio
+import logging
+
+from openttd_protocol.protocol.coordinator import CoordinatorProtocol
+
+log = logging.getLogger(__name__)
+
+
+class Application:
+    async def receive_PACKET_COORDINATOR_CLIENT_REGISTER(self, source, protocol_version, game_type, server_port):
+        # Your logic goes here
+        pass
+
+
+def main():
+    application = Application()
+
+    loop = asyncio.get_event_loop()
+    server = loop.run_until_complete(loop.create_server(lambda: CoordinatorProtocol(application), host="127.0.0.1", port=12345, reuse_port=True, start_serving=True))
+
+    try:
+        loop.run_until_complete(server.serve_forever())
+    except KeyboardInterrupt:
+        pass
+
+    log.info("Shutting down game_coordinator ...")
+    server.close()
+
+if __name__ == "__main__":
+    main()
+```
