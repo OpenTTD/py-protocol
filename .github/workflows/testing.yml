@@ -36,7 +36,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Flake8
-      uses: TrueBrain/actions-flake8@v1
+      uses: TrueBrain/actions-flake8@v2
       with:
         path: openttd_protocol
 
