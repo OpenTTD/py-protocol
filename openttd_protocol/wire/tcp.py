@@ -92,16 +92,23 @@ class TCPProtocol(asyncio.Protocol):
 
         # This message arrived via the proxy protocol; use the information
         # from this to figure out the real ip and port.
-        proxy_end = data.find(b"\r\n")
-        proxy = data[0:proxy_end].decode()
-        data = data[proxy_end + 2 :]
-
         # Example how 'proxy' looks:
         #  PROXY TCP4 127.0.0.1 127.0.0.1 33487 12345
 
+        # Search for \r\n, marking the end of the proxy protocol header.
+        for i in range(len(data) - 1):
+            if data[i] == 13 and data[i + 1] == 10:
+                proxy_end = i
+                break
+        else:
+            log.warning("Receive proxy protocol header without end from %s:%d", self.source.ip, self.source.port)
+            return data
+
+        proxy = data[0:proxy_end].tobytes().decode()
         (_, _, ip, _, port, _) = proxy.split(" ")
         self.source = Source(self, self.source.addr, ip, int(port))
-        return data
+
+        return data[proxy_end + 2 :]
 
     def data_received(self, data):
         data = memoryview(data)
