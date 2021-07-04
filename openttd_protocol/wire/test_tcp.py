@@ -56,7 +56,7 @@ async def test_detect_source_ip_port(proxy_protocol, data, result, ip, port):
     test.source = Source(test, None, "127.0.0.2", 54321)
     test.proxy_protocol = proxy_protocol
 
-    assert test._detect_source_ip_port(data) == result
+    assert test._detect_source_ip_port(memoryview(data)) == result
     assert str(test.source.ip) == ip
     assert test.source.port == port
 
@@ -74,7 +74,7 @@ async def test_data_received(data, data_left, result):
     test = OpenTTDProtocolTest(None)
     test.task.cancel()
 
-    test.data_received(data)
+    test.data_received(memoryview(data))
     assert test._data == data_left
     try:
         assert test._queue.get_nowait() == result
@@ -94,7 +94,7 @@ async def test_receive_packet(data, result):
     test = OpenTTDProtocolTest(None)
     test.task.cancel()
 
-    assert test.receive_packet(None, data) == result
+    assert test.receive_packet(None, memoryview(data)) == result
 
 
 @pytest.mark.parametrize(
@@ -112,7 +112,7 @@ async def test_receive_packet_failure(data, failure):
     test.task.cancel()
 
     with pytest.raises(failure):
-        test.receive_packet(None, data)
+        test.receive_packet(None, memoryview(data))
 
 
 @pytest.mark.parametrize(
@@ -141,7 +141,7 @@ async def test_process_queue(data, result):
     test.source = Source(test, None, "127.0.0.1", 12345)
     test.transport = FakeTransport()
 
-    test._queue.put_nowait(data)
-    test._queue.put_nowait(b"\x04\x00\x00")  # Force an exception
+    test._queue.put_nowait(memoryview(data))
+    test._queue.put_nowait(memoryview(b"\x04\x00\x00"))  # Force an exception
     await test._process_queue()
     assert seen_packet[0] is True
