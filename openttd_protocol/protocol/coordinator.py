@@ -101,7 +101,7 @@ class CoordinatorProtocol(TCPProtocol):
                 newgrf_id, data = read_uint32(data)
                 md5sum, data = read_bytes(data, 16)
 
-                newgrfs.append((newgrf_id, md5sum))
+                newgrfs.append((newgrf_id, md5sum.hex()))
         else:
             newgrfs = None
 
@@ -222,7 +222,7 @@ class CoordinatorProtocol(TCPProtocol):
                 write_uint8(data, len(server.info["newgrfs"]))
                 for newgrf in server.info["newgrfs"]:
                     write_uint32(data, newgrf[0])
-                    write_bytes(data, newgrf[1])
+                    write_bytes(data, bytes.fromhex(newgrf[1]))
 
             if game_info_version >= 3:
                 write_uint32(data, server.info["game_date"])
