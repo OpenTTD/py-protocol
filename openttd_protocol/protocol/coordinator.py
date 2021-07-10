@@ -35,12 +35,12 @@ DAYS_TILL_ORIGINAL_BASE_YEAR = (
 
 
 class PacketCoordinatorType(enum.IntEnum):
-    PACKET_COORDINATOR_SERVER_ERROR = 0
-    PACKET_COORDINATOR_CLIENT_REGISTER = 1
-    PACKET_COORDINATOR_SERVER_REGISTER_ACK = 2
-    PACKET_COORDINATOR_CLIENT_UPDATE = 3
+    PACKET_COORDINATOR_GC_ERROR = 0
+    PACKET_COORDINATOR_SERVER_REGISTER = 1
+    PACKET_COORDINATOR_GC_REGISTER_ACK = 2
+    PACKET_COORDINATOR_SERVER_UPDATE = 3
     PACKET_COORDINATOR_CLIENT_LISTING = 4
-    PACKET_COORDINATOR_SERVER_LISTING = 5
+    PACKET_COORDINATOR_GC_LISTING = 5
     PACKET_COORDINATOR_END = 6
 
 
@@ -61,7 +61,7 @@ class CoordinatorProtocol(TCPProtocol):
     PACKET_END = PacketCoordinatorType.PACKET_COORDINATOR_END
 
     @staticmethod
-    def receive_PACKET_COORDINATOR_CLIENT_REGISTER(source, data):
+    def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
         if protocol_version != 1:
@@ -77,12 +77,12 @@ class CoordinatorProtocol(TCPProtocol):
         server_port, data = read_uint16(data)
 
         if len(data) != 0:
-            raise PacketInvalidData("more bytes than expected in CLIENT_REGISTER; remaining: ", len(data))
+            raise PacketInvalidData("more bytes than expected in SERVER_REGISTER; remaining: ", len(data))
 
         return {"protocol_version": protocol_version, "game_type": game_type, "server_port": server_port}
 
     @staticmethod
-    def receive_PACKET_COORDINATOR_CLIENT_UPDATE(source, data):
+    def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
         if protocol_version != 1:
@@ -142,7 +142,7 @@ class CoordinatorProtocol(TCPProtocol):
             is_dedicated, data = read_uint8(data)
 
         if len(data) != 0:
-            raise PacketInvalidData("more bytes than expected in CLIENT_UPDATE; remaining: ", len(data))
+            raise PacketInvalidData("more bytes than expected in SERVER_UPDATE; remaining: ", len(data))
 
         return {
             "protocol_version": protocol_version,
@@ -187,8 +187,8 @@ class CoordinatorProtocol(TCPProtocol):
             "openttd_version": openttd_version,
         }
 
-    async def send_PACKET_COORDINATOR_SERVER_ERROR(self, error_no, error_detail):
-        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_SERVER_ERROR)
+    async def send_PACKET_COORDINATOR_GC_ERROR(self, error_no, error_detail):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_ERROR)
 
         write_uint8(data, error_no.value)
         write_string(data, error_detail)
@@ -196,22 +196,22 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    async def send_PACKET_COORDINATOR_SERVER_REGISTER_ACK(self, connection_type):
-        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_SERVER_REGISTER_ACK)
+    async def send_PACKET_COORDINATOR_GC_REGISTER_ACK(self, connection_type):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_REGISTER_ACK)
 
         write_uint8(data, connection_type.value)
 
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    async def send_PACKET_COORDINATOR_SERVER_LISTING(self, game_info_version, servers):
+    async def send_PACKET_COORDINATOR_GC_LISTING(self, game_info_version, servers):
         for server in servers:
             if server.game_type != ServerGameType.SERVER_GAME_TYPE_PUBLIC:
                 continue
             if len(server.info) == 0:
                 continue
 
-            data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_SERVER_LISTING)
+            data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_LISTING)
 
             write_uint16(data, 1)
 
@@ -257,7 +257,7 @@ class CoordinatorProtocol(TCPProtocol):
             await self.send_packet(data)
 
         # Send a final packet with 0 servers to indicate end-of-list.
-        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_SERVER_LISTING)
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_LISTING)
         write_uint16(data, 0)
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
