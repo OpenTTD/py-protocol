@@ -49,8 +49,12 @@ class TCPProtocol(asyncio.Protocol):
         socket_addr = transport.get_extra_info("peername")
         self.source = Source(self, socket_addr, socket_addr[0], socket_addr[1])
 
+        if hasattr(self._callback, "connected"):
+            self._callback.connected(self.source)
+
     def connection_lost(self, exc):
-        getattr(self._callback, "disconnect")(self.source)
+        if hasattr(self._callback, "disconnect"):
+            self._callback.disconnect(self.source)
         self.task.cancel()
 
     async def _check_closed(self):
