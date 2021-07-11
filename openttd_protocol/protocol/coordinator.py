@@ -41,7 +41,13 @@ class PacketCoordinatorType(enum.IntEnum):
     PACKET_COORDINATOR_SERVER_UPDATE = 3
     PACKET_COORDINATOR_CLIENT_LISTING = 4
     PACKET_COORDINATOR_GC_LISTING = 5
-    PACKET_COORDINATOR_END = 6
+    PACKET_COORDINATOR_CLIENT_CONNECT = 6
+    PACKET_COORDINATOR_GC_CONNECTING = 7
+    PACKET_COORDINATOR_SERCLI_CONNECT_FAILED = 8
+    PACKET_COORDINATOR_GC_CONNECT_FAILED = 9
+    PACKET_COORDINATOR_CLIENT_CONNECTED = 10
+    PACKET_COORDINATOR_GC_DIRECT_CONNECT = 11
+    PACKET_COORDINATOR_END = 12
 
 
 class ServerGameType(enum.IntEnum):
@@ -56,6 +62,12 @@ class ConnectionType(enum.IntEnum):
     CONNECTION_TYPE_DIRECT = 2
 
 
+class NetworkCoordinatorErrorType(enum.IntEnum):
+    NETWORK_COORDINATOR_ERROR_UNKNOWN = 0
+    NETWORK_COORDINATOR_ERROR_REGISTRATION_FAILED = 1
+    NETWORK_COORDINATOR_ERROR_INVALID_INVITE_CODE = 2
+
+
 class CoordinatorProtocol(TCPProtocol):
     PacketType = PacketCoordinatorType
     PACKET_END = PacketCoordinatorType.PACKET_COORDINATOR_END
@@ -64,7 +76,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 1:
+        if protocol_version not in (1, 2):
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_type, data = read_uint8(data)
@@ -76,16 +88,29 @@ class CoordinatorProtocol(TCPProtocol):
 
         server_port, data = read_uint16(data)
 
+        if protocol_version > 1:
+            invite_code, data = read_string(data)
+            invite_code_secret, data = read_string(data)
+        else:
+            invite_code = None
+            invite_code_secret = None
+
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in SERVER_REGISTER; remaining: ", len(data))
 
-        return {"protocol_version": protocol_version, "game_type": game_type, "server_port": server_port}
+        return {
+            "protocol_version": protocol_version,
+            "game_type": game_type,
+            "server_port": server_port,
+            "invite_code": invite_code,
+            "invite_code_secret": invite_code_secret,
+        }
 
     @staticmethod
     def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 1:
+        if protocol_version not in (1, 2):
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -168,7 +193,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_LISTING(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 1:
+        if protocol_version not in (1, 2):
             raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
 
         game_info_version, data = read_uint8(data)
@@ -187,7 +212,60 @@ class CoordinatorProtocol(TCPProtocol):
             "openttd_version": openttd_version,
         }
 
-    async def send_PACKET_COORDINATOR_GC_ERROR(self, error_no, error_detail):
+    @staticmethod
+    def receive_PACKET_COORDINATOR_CLIENT_CONNECT(source, data):
+        protocol_version, data = read_uint8(data)
+
+        if protocol_version != 2:
+            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+
+        invite_code, data = read_string(data)
+
+        if len(data) != 0:
+            raise PacketInvalidData("more bytes than expected in CLIENT_CONNECT; remaining: ", len(data))
+
+        return {
+            "protocol_version": protocol_version,
+            "invite_code": invite_code,
+        }
+
+    @staticmethod
+    def receive_PACKET_COORDINATOR_SERCLI_CONNECT_FAILED(source, data):
+        protocol_version, data = read_uint8(data)
+
+        if protocol_version != 2:
+            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+
+        token, data = read_string(data)
+        tracking_number, data = read_uint8(data)
+
+        if len(data) != 0:
+            raise PacketInvalidData("more bytes than expected in SERCLI_CONNECT_FAILED; remaining: ", len(data))
+
+        return {
+            "protocol_version": protocol_version,
+            "token": token,
+            "tracking_number": tracking_number,
+        }
+
+    @staticmethod
+    def receive_PACKET_COORDINATOR_CLIENT_CONNECTED(source, data):
+        protocol_version, data = read_uint8(data)
+
+        if protocol_version != 2:
+            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+
+        token, data = read_string(data)
+
+        if len(data) != 0:
+            raise PacketInvalidData("more bytes than expected in CLIENT_CONNECTED; remaining: ", len(data))
+
+        return {
+            "protocol_version": protocol_version,
+            "token": token,
+        }
+
+    async def send_PACKET_COORDINATOR_GC_ERROR(self, protocol_version, error_no, error_detail):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_ERROR)
 
         write_uint8(data, error_no.value)
@@ -196,15 +274,20 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    async def send_PACKET_COORDINATOR_GC_REGISTER_ACK(self, connection_type):
+    async def send_PACKET_COORDINATOR_GC_REGISTER_ACK(
+        self, protocol_version, connection_type, invite_code, invite_code_secret
+    ):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_REGISTER_ACK)
 
+        if protocol_version > 1:
+            write_string(data, invite_code)
+            write_string(data, invite_code_secret)
         write_uint8(data, connection_type.value)
 
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    async def send_PACKET_COORDINATOR_GC_LISTING(self, game_info_version, servers):
+    async def send_PACKET_COORDINATOR_GC_LISTING(self, protocol_version, game_info_version, servers):
         for server in servers:
             if server.game_type != ServerGameType.SERVER_GAME_TYPE_PUBLIC:
                 continue
@@ -259,5 +342,33 @@ class CoordinatorProtocol(TCPProtocol):
         # Send a final packet with 0 servers to indicate end-of-list.
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_LISTING)
         write_uint16(data, 0)
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_CONNECTING(self, protocol_version, token, invite_code):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECTING)
+
+        write_string(data, token)
+        write_string(data, invite_code)
+
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_CONNECT_FAILED(self, protocol_version, token):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECT_FAILED)
+
+        write_string(data, token)
+
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_DIRECT_CONNECT(self, protocol_version, token, tracking_number, hostname, port):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_DIRECT_CONNECT)
+
+        write_string(data, token)
+        write_uint8(data, tracking_number)
+        write_string(data, hostname)
+        write_uint16(data, port)
+
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
