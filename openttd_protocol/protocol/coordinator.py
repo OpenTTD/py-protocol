@@ -53,7 +53,8 @@ class PacketCoordinatorType(enum.IntEnum):
 class ServerGameType(enum.IntEnum):
     SERVER_GAME_TYPE_LOCAL = 0
     SERVER_GAME_TYPE_PUBLIC = 1
-    SERVER_GAME_TYPE_END = 2
+    SERVER_GAME_TYPE_INVITE_ONLY = 2
+    SERVER_GAME_TYPE_END = 3
 
 
 class ConnectionType(enum.IntEnum):
