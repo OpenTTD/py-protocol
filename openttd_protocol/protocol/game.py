@@ -45,8 +45,15 @@ class GameProtocol(TCPProtocol):
     def receive_PACKET_SERVER_GAME_INFO(source, data):
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 4:
+        if game_info_version < 1 or game_info_version > 5:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
+
+        if game_info_version >= 5:
+            gamescript_version, data = read_uint32(data)
+            gamescript_name, data = read_string(data)
+        else:
+            gamescript_version = None
+            gamescript_name = None
 
         if game_info_version >= 4:
             newgrf_count, data = read_uint8(data)
@@ -116,6 +123,8 @@ class GameProtocol(TCPProtocol):
             "map_width": map_width,
             "map_height": map_height,
             "map_type": map_type,
+            "gamescript_version": gamescript_version,
+            "gamescript_name": gamescript_name,
         }
 
     async def send_PACKET_CLIENT_GAME_INFO(self):
