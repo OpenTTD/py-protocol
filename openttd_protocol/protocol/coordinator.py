@@ -116,8 +116,15 @@ class CoordinatorProtocol(TCPProtocol):
 
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 4:
+        if game_info_version < 1 or game_info_version > 5:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
+
+        if game_info_version >= 5:
+            gamescript_version, data = read_uint32(data)
+            gamescript_name, data = read_string(data)
+        else:
+            gamescript_version = None
+            gamescript_name = None
 
         if game_info_version >= 4:
             newgrf_count, data = read_uint8(data)
@@ -188,6 +195,8 @@ class CoordinatorProtocol(TCPProtocol):
             "map_width": map_width,
             "map_height": map_height,
             "map_type": map_type,
+            "gamescript_version": gamescript_version,
+            "gamescript_name": gamescript_name,
         }
 
     @staticmethod
@@ -199,7 +208,7 @@ class CoordinatorProtocol(TCPProtocol):
 
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 4:
+        if game_info_version < 1 or game_info_version > 5:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
 
         openttd_version, data = read_string(data)
@@ -301,6 +310,10 @@ class CoordinatorProtocol(TCPProtocol):
 
             write_string(data, server.connection_string)
             write_uint8(data, game_info_version)
+
+            if game_info_version >= 5:
+                write_uint32(data, server.info["gamescript_version"])
+                write_string(data, server.info["gamescript_name"])
 
             if game_info_version >= 4:
                 write_uint8(data, len(server.info["newgrfs"]))
