@@ -47,7 +47,10 @@ class PacketCoordinatorType(enum.IntEnum):
     PACKET_COORDINATOR_GC_CONNECT_FAILED = 9
     PACKET_COORDINATOR_CLIENT_CONNECTED = 10
     PACKET_COORDINATOR_GC_DIRECT_CONNECT = 11
-    PACKET_COORDINATOR_END = 12
+    PACKET_COORDINATOR_GC_STUN_REQUEST = 12
+    PACKET_COORDINATOR_SERCLI_STUN_RESULT = 13
+    PACKET_COORDINATOR_GC_STUN_CONNECT = 14
+    PACKET_COORDINATOR_END = 15
 
 
 class ServerGameType(enum.IntEnum):
@@ -61,6 +64,7 @@ class ConnectionType(enum.IntEnum):
     CONNECTION_TYPE_UNKNOWN = 0
     CONNECTION_TYPE_ISOLATED = 1
     CONNECTION_TYPE_DIRECT = 2
+    CONNECTION_TYPE_STUN = 3
 
 
 class NetworkCoordinatorErrorType(enum.IntEnum):
@@ -77,7 +81,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version not in (1, 2):
+        if protocol_version not in (1, 2, 3):
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_type, data = read_uint8(data)
@@ -111,7 +115,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version not in (1, 2):
+        if protocol_version not in (1, 2, 3):
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -203,8 +207,8 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_LISTING(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version not in (1, 2):
-            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+        if protocol_version not in (1, 2, 3):
+            raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
 
@@ -226,8 +230,8 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 2:
-            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+        if protocol_version not in (2, 3):
+            raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         invite_code, data = read_string(data)
 
@@ -243,8 +247,8 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERCLI_CONNECT_FAILED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 2:
-            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+        if protocol_version not in (2, 3):
+            raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
         tracking_number, data = read_uint8(data)
@@ -262,8 +266,8 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECTED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 2:
-            raise PacketInvalidData("unknown protocol version: ", len(protocol_version))
+        if protocol_version not in (2, 3):
+            raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
 
@@ -273,6 +277,27 @@ class CoordinatorProtocol(TCPProtocol):
         return {
             "protocol_version": protocol_version,
             "token": token,
+        }
+
+    @staticmethod
+    def receive_PACKET_COORDINATOR_SERCLI_STUN_RESULT(source, data):
+        protocol_version, data = read_uint8(data)
+
+        if protocol_version != 3:
+            raise PacketInvalidData("unknown protocol version: ", protocol_version)
+
+        token, data = read_string(data)
+        interface_number, data = read_uint8(data)
+        result, data = read_uint8(data)
+
+        if len(data) != 0:
+            raise PacketInvalidData("more bytes than expected in SERCLI_STUN_RESULT; remaining: ", len(data))
+
+        return {
+            "protocol_version": protocol_version,
+            "token": token,
+            "interface_number": interface_number,
+            "result": result,
         }
 
     async def send_PACKET_COORDINATOR_GC_ERROR(self, protocol_version, error_no, error_detail):
@@ -381,6 +406,28 @@ class CoordinatorProtocol(TCPProtocol):
 
         write_string(data, token)
         write_uint8(data, tracking_number)
+        write_string(data, hostname)
+        write_uint16(data, port)
+
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_STUN_REQUEST(self, protocol_version, token):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_STUN_REQUEST)
+
+        write_string(data, token)
+
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_STUN_CONNECT(
+        self, protocol_version, token, tracking_number, interface_number, hostname, port
+    ):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_STUN_CONNECT)
+
+        write_string(data, token)
+        write_uint8(data, tracking_number)
+        write_uint8(data, interface_number)
         write_string(data, hostname)
         write_uint16(data, port)
 
