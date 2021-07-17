@@ -24,6 +24,9 @@ from ..wire.write import (
 log = logging.getLogger(__name__)
 
 
+# Value used to indicate no gamescript is loaded on the server.
+# This is in fact (int32)-1 casted to an uint32.
+GAMESCRIPT_VERSION_NONE = 4294967295
 # The minimum starting year on the original TTD.
 ORIGINAL_BASE_YEAR = 1920
 # In GameInfo version 3 the date was changed to be counted from the year zero.
@@ -337,14 +340,21 @@ class CoordinatorProtocol(TCPProtocol):
             write_uint8(data, game_info_version)
 
             if game_info_version >= 5:
-                write_uint32(data, server.info["gamescript_version"])
-                write_string(data, server.info["gamescript_name"])
+                if server.info["gamescript_version"] is None or server.info["gamescript_name"] is None:
+                    write_uint32(data, GAMESCRIPT_VERSION_NONE)
+                    write_string(data, "")
+                else:
+                    write_uint32(data, server.info["gamescript_version"])
+                    write_string(data, server.info["gamescript_name"])
 
             if game_info_version >= 4:
-                write_uint8(data, len(server.info["newgrfs"]))
-                for newgrf in server.info["newgrfs"]:
-                    write_uint32(data, newgrf["grfid"])
-                    write_bytes(data, bytes.fromhex(newgrf["md5sum"]))
+                if server.info["newgrfs"] is None:
+                    write_uint8(data, 0)
+                else:
+                    write_uint8(data, len(server.info["newgrfs"]))
+                    for newgrf in server.info["newgrfs"]:
+                        write_uint32(data, newgrf["grfid"])
+                        write_bytes(data, bytes.fromhex(newgrf["md5sum"]))
 
             if game_info_version >= 3:
                 write_uint32(data, server.info["game_date"])
