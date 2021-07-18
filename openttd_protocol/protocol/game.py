@@ -37,6 +37,15 @@ class PacketGameType(enum.IntEnum):
     PACKET_END = 44
 
 
+class NewGRFSerializationType(enum.IntEnum):
+    NST_GRFID_MD5 = 0
+    NST_GRFID_MD5_NAME = 1
+    NST_LOOKUP_ID = 2
+    NST_END = 3
+    # NST_CONVERSION_GRFID_MD5 is an internal value, assigned for those servers that didn't send this value yet.
+    NST_CONVERSION_GRFID_MD5 = 4
+
+
 class GameProtocol(TCPProtocol):
     PacketType = PacketGameType
     PACKET_END = PacketGameType.PACKET_END
@@ -45,8 +54,20 @@ class GameProtocol(TCPProtocol):
     def receive_PACKET_SERVER_GAME_INFO(source, data):
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 5:
+        if game_info_version < 1 or game_info_version > 6:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
+
+        if game_info_version >= 6:
+            newgrf_serialization_type, data = read_uint8(data)
+
+            if newgrf_serialization_type >= NewGRFSerializationType.NST_END:
+                raise PacketInvalidData("invalid NewGRFSerializationType", newgrf_serialization_type)
+
+            newgrf_serialization_type = NewGRFSerializationType(newgrf_serialization_type)
+            if newgrf_serialization_type == NewGRFSerializationType.NST_LOOKUP_ID:
+                raise PacketInvalidData("NewGRF serialization type cannot be NST_LOOKUP_ID")
+        else:
+            newgrf_serialization_type = NewGRFSerializationType.NST_CONVERSION_GRFID_MD5
 
         if game_info_version >= 5:
             gamescript_version, data = read_uint32(data)
@@ -59,11 +80,16 @@ class GameProtocol(TCPProtocol):
             newgrf_count, data = read_uint8(data)
 
             newgrfs = []
-            for i in range(newgrf_count):
+            for _ in range(newgrf_count):
                 grfid, data = read_uint32(data)
                 md5sum, data = read_bytes(data, 16)
 
-                newgrfs.append({"grfid": grfid, "md5sum": md5sum.hex()})
+                if newgrf_serialization_type == NewGRFSerializationType.NST_GRFID_MD5_NAME:
+                    name, data = read_string(data)
+                else:
+                    name = None
+
+                newgrfs.append({"grfid": grfid, "md5sum": md5sum.hex(), "name": name})
         else:
             newgrfs = None
 
@@ -83,7 +109,8 @@ class GameProtocol(TCPProtocol):
         if game_info_version >= 1:
             name, data = read_string(data)
             openttd_version, data = read_string(data)
-            _, data = read_uint8(data)  # Unused, used to be server-lang
+            if game_info_version < 6:
+                _, data = read_uint8(data)  # Unused, used to be server-lang
             use_password, data = read_uint8(data)
 
             clients_max, data = read_uint8(data)
@@ -96,7 +123,8 @@ class GameProtocol(TCPProtocol):
                 start_date, data = read_uint16(data)
                 start_date += DAYS_TILL_ORIGINAL_BASE_YEAR
 
-            _, data = read_string(data)  # Unused, used to be map-name
+            if game_info_version < 6:
+                _, data = read_string(data)  # Unused, used to be map-name
             map_width, data = read_uint16(data)
             map_height, data = read_uint16(data)
             map_type, data = read_uint8(data)
