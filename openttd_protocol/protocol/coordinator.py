@@ -54,7 +54,8 @@ class PacketCoordinatorType(enum.IntEnum):
     PACKET_COORDINATOR_SERCLI_STUN_RESULT = 13
     PACKET_COORDINATOR_GC_STUN_CONNECT = 14
     PACKET_COORDINATOR_GC_NEWGRF_LOOKUP = 15
-    PACKET_COORDINATOR_END = 16
+    PACKET_COORDINATOR_GC_TURN_CONNECT = 16
+    PACKET_COORDINATOR_END = 17
 
 
 class ServerGameType(enum.IntEnum):
@@ -69,6 +70,7 @@ class ConnectionType(enum.IntEnum):
     CONNECTION_TYPE_ISOLATED = 1
     CONNECTION_TYPE_DIRECT = 2
     CONNECTION_TYPE_STUN = 3
+    CONNECTION_TYPE_TURN = 4
 
 
 class NetworkCoordinatorErrorType(enum.IntEnum):
@@ -94,7 +96,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 4:
+        if protocol_version < 1 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_type, data = read_uint8(data)
@@ -128,7 +130,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 4:
+        if protocol_version < 1 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -240,7 +242,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_LISTING(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 4:
+        if protocol_version < 1 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -268,7 +270,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 4:
+        if protocol_version < 2 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         invite_code, data = read_string(data)
@@ -285,7 +287,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERCLI_CONNECT_FAILED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 4:
+        if protocol_version < 2 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -304,7 +306,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECTED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 4:
+        if protocol_version < 2 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -321,7 +323,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERCLI_STUN_RESULT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 3 or protocol_version > 4:
+        if protocol_version < 3 or protocol_version > 5:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -526,6 +528,19 @@ class CoordinatorProtocol(TCPProtocol):
         write_uint8(data, interface_number)
         write_string(data, hostname)
         write_uint16(data, port)
+
+        write_presend(data, SEND_TCP_MTU)
+        await self.send_packet(data)
+
+    async def send_PACKET_COORDINATOR_GC_TURN_CONNECT(
+        self, protocol_version, token, tracking_number, ticket, connection_string
+    ):
+        data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_TURN_CONNECT)
+
+        write_string(data, token)
+        write_uint8(data, tracking_number)
+        write_string(data, ticket)
+        write_string(data, connection_string)
 
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
