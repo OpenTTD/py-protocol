@@ -149,6 +149,24 @@ class TCPProtocol(asyncio.Protocol):
         while True:
             data = await self._queue.get()
 
+            if hasattr(self._callback, "receive_raw"):
+                try:
+                    if await self._callback.receive_raw(self.source, data):
+                        continue
+                except SocketClosed:
+                    # The other side is closing the connection; it can happen
+                    # there is still some writes in the buffer, so force a close
+                    # on our side too to free the resources.
+                    self.transport.abort()
+                    return
+                except asyncio.CancelledError:
+                    # Our coroutine is cancelled, pass it on the the caller.
+                    raise
+                except Exception:
+                    log.exception("Internal error: receive_raw triggered an exception")
+                    self.transport.abort()
+                    return
+
             try:
                 packet_type, kwargs = self.receive_packet(self.source, data)
             except PacketInvalid as err:
