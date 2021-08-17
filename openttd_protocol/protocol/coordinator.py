@@ -77,6 +77,7 @@ class NetworkCoordinatorErrorType(enum.IntEnum):
     NETWORK_COORDINATOR_ERROR_UNKNOWN = 0
     NETWORK_COORDINATOR_ERROR_REGISTRATION_FAILED = 1
     NETWORK_COORDINATOR_ERROR_INVALID_INVITE_CODE = 2
+    NETWORK_COORDINATOR_ERROR_REUSE_OF_INVITE_CODE = 3
 
 
 class NewGRFSerializationType(enum.IntEnum):
@@ -96,7 +97,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 5:
+        if protocol_version < 1 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_type, data = read_uint8(data)
@@ -130,7 +131,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 5:
+        if protocol_version < 1 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -242,7 +243,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_LISTING(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 1 or protocol_version > 5:
+        if protocol_version < 1 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         game_info_version, data = read_uint8(data)
@@ -270,7 +271,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 5:
+        if protocol_version < 2 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         invite_code, data = read_string(data)
@@ -287,7 +288,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERCLI_CONNECT_FAILED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 5:
+        if protocol_version < 2 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -306,7 +307,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_CLIENT_CONNECTED(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 2 or protocol_version > 5:
+        if protocol_version < 2 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -323,7 +324,7 @@ class CoordinatorProtocol(TCPProtocol):
     def receive_PACKET_COORDINATOR_SERCLI_STUN_RESULT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 3 or protocol_version > 5:
+        if protocol_version < 3 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
@@ -342,6 +343,14 @@ class CoordinatorProtocol(TCPProtocol):
 
     async def send_PACKET_COORDINATOR_GC_ERROR(self, protocol_version, error_no, error_detail):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_ERROR)
+
+        # Older protocol versions didn't know "REUSE_OF_INVITE_CODE" yet. So
+        # replace it with the next best thing: "REGISTRATION_FAILED".
+        if (
+            protocol_version < 6
+            and error_no == NetworkCoordinatorErrorType.NETWORK_COORDINATOR_ERROR_REUSE_OF_INVITE_CODE
+        ):
+            error_no = NetworkCoordinatorErrorType.NETWORK_COORDINATOR_ERROR_REGISTRATION_FAILED
 
         write_uint8(data, error_no.value)
         write_string(data, error_detail)
