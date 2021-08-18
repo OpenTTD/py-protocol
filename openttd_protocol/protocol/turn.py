@@ -32,7 +32,7 @@ class TurnProtocol(TCPProtocol):
     def receive_PACKET_TURN_SERCLI_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version != 5:
+        if protocol_version < 5 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         ticket, data = read_string(data)

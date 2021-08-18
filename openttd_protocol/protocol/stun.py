@@ -24,7 +24,7 @@ class StunProtocol(TCPProtocol):
     def receive_PACKET_STUN_SERCLI_STUN(source, data):
         protocol_version, data = read_uint8(data)
 
-        if protocol_version < 3 or protocol_version > 5:
+        if protocol_version < 3 or protocol_version > 6:
             raise PacketInvalidData("unknown protocol version: ", protocol_version)
 
         token, data = read_string(data)
