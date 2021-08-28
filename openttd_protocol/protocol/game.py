@@ -33,7 +33,9 @@ class PacketGameType(enum.IntEnum):
     # TODO -- Packets 0 .. 5 are not implemented yet. Pull Requests are welcome.
     PACKET_SERVER_GAME_INFO = 6
     PACKET_CLIENT_GAME_INFO = 7
-    # TODO -- Packets 8 .. 43 are not implemented yet. Pull Requests are welcome.
+    # TODO -- Packets 8 .. 39 are not implemented yet. Pull Requests are welcome.
+    PACKET_SERVER_SHUTDOWN = 40
+    # TODO -- Packets 41 .. 43 are not implemented yet. Pull Requests are welcome.
     PACKET_END = 44
 
 
@@ -154,6 +156,13 @@ class GameProtocol(TCPProtocol):
             "gamescript_version": gamescript_version,
             "gamescript_name": gamescript_name,
         }
+
+    @staticmethod
+    def receive_PACKET_SERVER_SHUTDOWN(source, data):
+        if len(data) != 0:
+            raise PacketInvalidData("more bytes than expected in SERVER_SHUTDOWN; remaining: ", len(data))
+
+        return {}
 
     async def send_PACKET_CLIENT_GAME_INFO(self):
         data = write_init(PacketGameType.PACKET_CLIENT_GAME_INFO)
