@@ -4,6 +4,7 @@ import struct
 
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
+    read_string,
     read_uint8,
     read_uint16,
     read_uint32,
@@ -74,6 +75,18 @@ class ContentProtocol(TCPProtocol):
         content_type, data = read_uint8(data)
         openttd_version, data = read_uint32(data)
 
+        # Since OpenTTD 12.0 we extended this packet to include multiple
+        # branches and their versions, so patchpacks can filter the list
+        # based on their version. This is indicated by sending an
+        # openttd_version that is UINT32_MAX.
+        branch_versions = {}
+        if openttd_version == 0xFFFFFFFF:
+            count, data = read_uint8(data)
+            for _ in range(count):
+                branch, data = read_string(data)
+                version, data = read_string(data)
+                branch_versions[branch] = version
+
         if content_type >= ContentType.CONTENT_TYPE_END:
             raise PacketInvalidData("invalid ContentType", content_type)
 
@@ -82,7 +95,7 @@ class ContentProtocol(TCPProtocol):
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected; remaining: ", len(data))
 
-        return {"content_type": content_type, "openttd_version": openttd_version}
+        return {"content_type": content_type, "openttd_version": openttd_version, "branch_versions": branch_versions}
 
     @staticmethod
     def _receive_client_info(data, count, has_content_id=False, has_content_type_and_unique_id=False, has_md5sum=False):
