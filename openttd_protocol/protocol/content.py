@@ -234,6 +234,6 @@ class ContentProtocol(TCPProtocol):
             write_presend(data, SEND_TCP_COMPAT_MTU)
             await self.send_packet(data)
 
-        write_init(PacketContentType.PACKET_CONTENT_SERVER_CONTENT)
+        data = write_init(PacketContentType.PACKET_CONTENT_SERVER_CONTENT)
         write_presend(data, SEND_TCP_COMPAT_MTU)
         await self.send_packet(data)
