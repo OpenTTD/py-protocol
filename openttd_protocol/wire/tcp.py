@@ -35,7 +35,8 @@ class TCPProtocol(asyncio.Protocol):
         self._can_write = asyncio.Event()
         self._can_write.set()
 
-        self.task = asyncio.create_task(self._process_queue())
+        self._pause_task = None
+        self.task = asyncio.create_task(self._guard_process_queue())
 
     def connection_made(self, transport):
         self.transport = transport
@@ -56,6 +57,8 @@ class TCPProtocol(asyncio.Protocol):
         if hasattr(self._callback, "disconnect"):
             self._callback.disconnect(self.source)
         self.task.cancel()
+        if self._pause_task:
+            self._pause_task.cancel()
 
     async def _check_closed(self):
         while True:
@@ -145,57 +148,38 @@ class TCPProtocol(asyncio.Protocol):
 
         return data.tobytes()
 
-    async def _process_queue(self):
+    async def _guard_process_queue(self):
         while True:
-            data = await self._queue.get()
-
-            if hasattr(self._callback, "receive_raw"):
-                try:
-                    if await self._callback.receive_raw(self.source, data):
-                        continue
-                except SocketClosed:
-                    # The other side is closing the connection; it can happen
-                    # there is still some writes in the buffer, so force a close
-                    # on our side too to free the resources.
-                    self.transport.abort()
-                    return
-                except asyncio.CancelledError:
-                    # Our coroutine is cancelled, pass it on the the caller.
-                    raise
-                except Exception:
-                    log.exception("Internal error: receive_raw triggered an exception")
-                    self.transport.abort()
-                    return
-
             try:
-                packet_type, kwargs = self.receive_packet(self.source, data)
-            except PacketInvalid as err:
-                log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
-                self.transport.close()
-                return
+                await self._process_queue()
             except asyncio.CancelledError:
                 # Our coroutine is cancelled, pass it on the the caller.
                 raise
-            except Exception:
-                log.exception("Internal error: receive_packet triggered an exception")
-                self.transport.abort()
-                return
-
-            try:
-                await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
             except SocketClosed:
                 # The other side is closing the connection; it can happen
                 # there is still some writes in the buffer, so force a close
                 # on our side too to free the resources.
                 self.transport.abort()
                 return
-            except asyncio.CancelledError:
-                # Our coroutine is cancelled, pass it on the the caller.
-                raise
             except Exception:
-                log.exception(f"Internal error: receive_{packet_type.name} triggered an exception")
+                log.exception("Internal error: process_queue triggered an exception")
                 self.transport.abort()
                 return
+
+    async def _process_queue(self):
+        data = await self._queue.get()
+
+        if hasattr(self._callback, "receive_raw"):
+            if await self._callback.receive_raw(self.source, data):
+                return
+
+        try:
+            packet_type, kwargs = self.receive_packet(self.source, data)
+        except PacketInvalid as err:
+            log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
+            raise SocketClosed
+
+        await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
 
     def receive_packet(self, source, data):
         # Check length of packet
