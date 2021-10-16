@@ -1,6 +1,7 @@
 import enum
 import logging
 
+from .. import tracer
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
     read_string,
@@ -29,6 +30,7 @@ class TurnProtocol(TCPProtocol):
     PACKET_END = PacketTurnType.PACKET_TURN_END
 
     @staticmethod
+    @tracer.traced("turn")
     def receive_PACKET_TURN_SERCLI_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -42,6 +44,7 @@ class TurnProtocol(TCPProtocol):
 
         return {"protocol_version": protocol_version, "ticket": ticket}
 
+    @tracer.traced("turn")
     async def send_PACKET_TURN_TURN_CONNECTED(self, protocol_version, hostname):
         data = write_init(PacketTurnType.PACKET_TURN_TURN_CONNECTED)
 
