@@ -181,8 +181,6 @@ class TCPProtocol(asyncio.Protocol):
                 log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
                 raise SocketClosed
 
-            tracer.add_context({"command": f"receive.{packet_type.name}"})
-
             with tracer.tracer("tcp.packet-handler"):
                 await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
 
@@ -194,19 +192,21 @@ class TCPProtocol(asyncio.Protocol):
             raise PacketInvalidSize(len(data) + 2, length)
 
         # Check if type is in range
-        type, data = read_uint8(data)
-        if type >= self.PACKET_END:
-            raise PacketInvalidType(type)
+        packet_type, data = read_uint8(data)
+        if packet_type >= self.PACKET_END:
+            raise PacketInvalidType(packet_type)
 
         # Check if we expect this packet
-        type = self.PacketType(type)
-        func = getattr(self, f"receive_{type.name}", None)
+        packet_type = self.PacketType(packet_type)
+        func = getattr(self, f"receive_{packet_type.name}", None)
         if func is None:
-            raise PacketInvalidType(type)
+            raise PacketInvalidType(packet_type)
+
+        tracer.add_trace_field("command", f"receive.{packet_type.name}")
 
         # Process this packet
         kwargs = func(source, data)
-        return type, kwargs
+        return packet_type, kwargs
 
     @tracer.traced("tcp")
     async def send_packet(self, data):
