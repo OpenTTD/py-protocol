@@ -10,7 +10,7 @@ try:
 
     tracer = beeline.tracer
     untraced = beeline.untraced
-    add_context = beeline.add_context
+    add_trace_field = beeline.add_trace_field
 
 except ImportError:
     # Honeycomb Beeline package is not installed. Mock the tracer functions.
@@ -34,5 +34,5 @@ except ImportError:
     def untraced(func):
         return func
 
-    def add_context(payload):
+    def add_trace_field(key, value):
         pass
