@@ -1,7 +1,6 @@
 import enum
 import logging
 
-from .. import tracer
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
     read_bytes,
@@ -95,7 +94,6 @@ class CoordinatorProtocol(TCPProtocol):
     PACKET_END = PacketCoordinatorType.PACKET_COORDINATOR_END
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_SERVER_REGISTER(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -130,7 +128,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_SERVER_UPDATE(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -243,7 +240,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_CLIENT_LISTING(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -272,7 +268,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_CLIENT_CONNECT(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -290,7 +285,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_SERCLI_CONNECT_FAILED(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -310,7 +304,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_CLIENT_CONNECTED(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -328,7 +321,6 @@ class CoordinatorProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("coordinator")
     def receive_PACKET_COORDINATOR_SERCLI_STUN_RESULT(source, data):
         protocol_version, data = read_uint8(data)
 
@@ -349,7 +341,6 @@ class CoordinatorProtocol(TCPProtocol):
             "result": result,
         }
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_ERROR(self, protocol_version, error_no, error_detail):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_ERROR)
 
@@ -367,7 +358,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_REGISTER_ACK(
         self, protocol_version, connection_type, invite_code, invite_code_secret
     ):
@@ -406,7 +396,6 @@ class CoordinatorProtocol(TCPProtocol):
         if count != 0:
             yield count, data
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_NEWGRF_LOOKUP(
         self, protocol_version, newgrf_lookup_table_cursor, newgrf_lookup_table
     ):
@@ -424,7 +413,6 @@ class CoordinatorProtocol(TCPProtocol):
             write_presend(data, SEND_TCP_MTU)
             await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_LISTING(
         self, protocol_version, game_info_version, servers, newgrf_lookup_table
     ):
@@ -503,7 +491,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_CONNECTING(self, protocol_version, token, invite_code):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECTING)
 
@@ -513,7 +500,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_CONNECT_FAILED(self, protocol_version, token):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECT_FAILED)
 
@@ -522,7 +508,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_DIRECT_CONNECT(self, protocol_version, token, tracking_number, hostname, port):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_DIRECT_CONNECT)
 
@@ -534,7 +519,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_STUN_REQUEST(self, protocol_version, token):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_STUN_REQUEST)
 
@@ -543,7 +527,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_STUN_CONNECT(
         self, protocol_version, token, tracking_number, interface_number, hostname, port
     ):
@@ -558,7 +541,6 @@ class CoordinatorProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("coordinator")
     async def send_PACKET_COORDINATOR_GC_TURN_CONNECT(
         self, protocol_version, token, tracking_number, ticket, connection_string
     ):

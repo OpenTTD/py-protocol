@@ -1,7 +1,6 @@
 import enum
 import logging
 
-from .. import tracer
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
     read_string,
@@ -22,7 +21,6 @@ class StunProtocol(TCPProtocol):
     PACKET_END = PacketStunType.PACKET_STUN_END
 
     @staticmethod
-    @tracer.traced("stun")
     def receive_PACKET_STUN_SERCLI_STUN(source, data):
         protocol_version, data = read_uint8(data)
 
