@@ -2,7 +2,6 @@ import enum
 import logging
 import struct
 
-from .. import tracer
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
     read_string,
@@ -72,7 +71,6 @@ class ContentProtocol(TCPProtocol):
     PACKET_END = PacketContentType.PACKET_CONTENT_END
 
     @staticmethod
-    @tracer.traced("content")
     def receive_PACKET_CONTENT_CLIENT_INFO_LIST(source, data):
         content_type, data = read_uint8(data)
         openttd_version, data = read_uint32(data)
@@ -143,7 +141,6 @@ class ContentProtocol(TCPProtocol):
         return content_infos, data
 
     @classmethod
-    @tracer.traced("content")
     def receive_PACKET_CONTENT_CLIENT_INFO_ID(cls, source, data):
         count, data = read_uint16(data)
 
@@ -155,7 +152,6 @@ class ContentProtocol(TCPProtocol):
         return {"content_infos": content_infos}
 
     @classmethod
-    @tracer.traced("content")
     def receive_PACKET_CONTENT_CLIENT_INFO_EXTID(cls, source, data):
         count, data = read_uint8(data)
 
@@ -167,7 +163,6 @@ class ContentProtocol(TCPProtocol):
         return {"content_infos": content_infos}
 
     @classmethod
-    @tracer.traced("content")
     def receive_PACKET_CONTENT_CLIENT_INFO_EXTID_MD5(cls, source, data):
         count, data = read_uint8(data)
 
@@ -181,7 +176,6 @@ class ContentProtocol(TCPProtocol):
         return {"content_infos": content_infos}
 
     @classmethod
-    @tracer.traced("content")
     def receive_PACKET_CONTENT_CLIENT_CONTENT(cls, source, data):
         count, data = read_uint16(data)
 
@@ -192,7 +186,6 @@ class ContentProtocol(TCPProtocol):
 
         return {"content_infos": content_infos}
 
-    @tracer.traced("content")
     async def send_PACKET_CONTENT_SERVER_INFO(
         self, content_type, content_id, filesize, name, version, url, description, unique_id, md5sum, dependencies, tags
     ):
@@ -234,7 +227,6 @@ class ContentProtocol(TCPProtocol):
         write_presend(data, SEND_TCP_COMPAT_MTU)
         await self.send_packet(data)
 
-    @tracer.traced("content")
     async def send_PACKET_CONTENT_SERVER_CONTENT(self, content_type, content_id, filesize, filename, stream):
         # First, send a packet to tell the client it will be receiving a file
         data = write_init(PacketContentType.PACKET_CONTENT_SERVER_CONTENT)

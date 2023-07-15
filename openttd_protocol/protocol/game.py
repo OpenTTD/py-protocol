@@ -1,7 +1,6 @@
 import enum
 import logging
 
-from .. import tracer
 from ..wire.exceptions import PacketInvalidData
 from ..wire.read import (
     read_bytes,
@@ -54,7 +53,6 @@ class GameProtocol(TCPProtocol):
     PACKET_END = PacketGameType.PACKET_END
 
     @staticmethod
-    @tracer.traced("game")
     def receive_PACKET_SERVER_GAME_INFO(source, data):
         game_info_version, data = read_uint8(data)
 
@@ -160,14 +158,12 @@ class GameProtocol(TCPProtocol):
         }
 
     @staticmethod
-    @tracer.traced("game")
     def receive_PACKET_SERVER_SHUTDOWN(source, data):
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in SERVER_SHUTDOWN; remaining: ", len(data))
 
         return {}
 
-    @tracer.traced("game")
     async def send_PACKET_CLIENT_GAME_INFO(self):
         data = write_init(PacketGameType.PACKET_CLIENT_GAME_INFO)
         write_presend(data, SEND_TCP_MTU)

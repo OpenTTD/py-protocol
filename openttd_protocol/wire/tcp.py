@@ -14,7 +14,6 @@ from .read import (
     read_uint16,
 )
 from .source import Source
-from .. import tracer
 
 log = logging.getLogger(__name__)
 
@@ -174,17 +173,14 @@ class TCPProtocol(asyncio.Protocol):
             if await self._callback.receive_raw(self.source, data):
                 return
 
-        with tracer.tracer("tcp.receive-packet"):
-            try:
-                packet_type, kwargs = self.receive_packet(self.source, data)
-            except PacketInvalid as err:
-                log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
-                raise SocketClosed
+        try:
+            packet_type, kwargs = self.receive_packet(self.source, data)
+        except PacketInvalid as err:
+            log.info("Dropping invalid packet from %s:%d: %r", self.source.ip, self.source.port, err)
+            raise SocketClosed
 
-            with tracer.tracer("tcp.packet-handler"):
-                await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
+        await getattr(self._callback, f"receive_{packet_type.name}")(self.source, **kwargs)
 
-    @tracer.traced("tcp")
     def receive_packet(self, source, data):
         # Check length of packet
         length, data = read_uint16(data)
@@ -202,13 +198,10 @@ class TCPProtocol(asyncio.Protocol):
         if func is None:
             raise PacketInvalidType(packet_type)
 
-        tracer.add_trace_field("command", f"receive.{packet_type.name}")
-
         # Process this packet
         kwargs = func(source, data)
         return packet_type, kwargs
 
-    @tracer.traced("tcp")
     async def send_packet(self, data):
         await self._can_write.wait()
 
