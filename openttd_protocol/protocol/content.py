@@ -225,7 +225,7 @@ class ContentProtocol(TCPProtocol):
             write_string(data, tag)
 
         write_presend(data, SEND_TCP_COMPAT_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_CONTENT_SERVER_CONTENT(self, content_type, content_id, filesize, filename, stream):
         # First, send a packet to tell the client it will be receiving a file
@@ -238,15 +238,16 @@ class ContentProtocol(TCPProtocol):
         write_string(data, filename)
 
         write_presend(data, SEND_TCP_COMPAT_MTU)
-        await self.send_packet(data)
+        length = await self.send_packet(data)
 
         # Next, send the content of the file over
         while not stream.eof():
             data = write_init(PacketContentType.PACKET_CONTENT_SERVER_CONTENT)
             data += stream.read(SEND_TCP_COMPAT_MTU - 3)
             write_presend(data, SEND_TCP_COMPAT_MTU)
-            await self.send_packet(data)
+            length += await self.send_packet(data)
 
         data = write_init(PacketContentType.PACKET_CONTENT_SERVER_CONTENT)
         write_presend(data, SEND_TCP_COMPAT_MTU)
-        await self.send_packet(data)
+        length += await self.send_packet(data)
+        return length

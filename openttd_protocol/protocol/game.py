@@ -167,4 +167,4 @@ class GameProtocol(TCPProtocol):
     async def send_PACKET_CLIENT_GAME_INFO(self):
         data = write_init(PacketGameType.PACKET_CLIENT_GAME_INFO)
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)

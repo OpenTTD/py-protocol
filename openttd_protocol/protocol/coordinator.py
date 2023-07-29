@@ -356,7 +356,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_string(data, error_detail)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_REGISTER_ACK(
         self, protocol_version, connection_type, invite_code, invite_code_secret
@@ -369,7 +369,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_uint8(data, connection_type.value)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     def _fill_NEWGRF_LOOKUP_PACKET(self, newgrf_lookup_table_cursor, newgrf_lookup_table):
         data = bytearray()
@@ -401,6 +401,7 @@ class CoordinatorProtocol(TCPProtocol):
     ):
         cursor = max(newgrf_lookup_table.keys())
 
+        length = 0
         for count, body in self._fill_NEWGRF_LOOKUP_PACKET(newgrf_lookup_table_cursor, newgrf_lookup_table):
             data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_NEWGRF_LOOKUP)
 
@@ -411,11 +412,14 @@ class CoordinatorProtocol(TCPProtocol):
             write_bytes(data, body)
 
             write_presend(data, SEND_TCP_MTU)
-            await self.send_packet(data)
+            length += await self.send_packet(data)
+
+        return length
 
     async def send_PACKET_COORDINATOR_GC_LISTING(
         self, protocol_version, game_info_version, servers, newgrf_lookup_table
     ):
+        length = 0
         for server in servers:
             if server.game_type != ServerGameType.SERVER_GAME_TYPE_PUBLIC:
                 continue
@@ -483,13 +487,14 @@ class CoordinatorProtocol(TCPProtocol):
                 write_uint8(data, server.info["is_dedicated"])
 
             write_presend(data, SEND_TCP_MTU)
-            await self.send_packet(data)
+            length += await self.send_packet(data)
 
         # Send a final packet with 0 servers to indicate end-of-list.
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_LISTING)
         write_uint16(data, 0)
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        length += await self.send_packet(data)
+        return length
 
     async def send_PACKET_COORDINATOR_GC_CONNECTING(self, protocol_version, token, invite_code):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECTING)
@@ -498,7 +503,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_string(data, invite_code)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_CONNECT_FAILED(self, protocol_version, token):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_CONNECT_FAILED)
@@ -506,7 +511,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_string(data, token)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_DIRECT_CONNECT(self, protocol_version, token, tracking_number, hostname, port):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_DIRECT_CONNECT)
@@ -517,7 +522,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_uint16(data, port)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_STUN_REQUEST(self, protocol_version, token):
         data = write_init(PacketCoordinatorType.PACKET_COORDINATOR_GC_STUN_REQUEST)
@@ -525,7 +530,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_string(data, token)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_STUN_CONNECT(
         self, protocol_version, token, tracking_number, interface_number, hostname, port
@@ -539,7 +544,7 @@ class CoordinatorProtocol(TCPProtocol):
         write_uint16(data, port)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
 
     async def send_PACKET_COORDINATOR_GC_TURN_CONNECT(
         self, protocol_version, token, tracking_number, ticket, connection_string
@@ -552,4 +557,4 @@ class CoordinatorProtocol(TCPProtocol):
         write_string(data, connection_string)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
