@@ -217,3 +217,5 @@ class TCPProtocol(asyncio.Protocol):
         # everything else, it is a non-blocking normal function.
         if iscoroutine(res):
             await res
+
+        return len(data)

@@ -48,4 +48,4 @@ class TurnProtocol(TCPProtocol):
         write_string(data, hostname)
 
         write_presend(data, SEND_TCP_MTU)
-        await self.send_packet(data)
+        return await self.send_packet(data)
