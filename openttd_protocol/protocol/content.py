@@ -87,7 +87,7 @@ class ContentProtocol(TCPProtocol):
                 version, data = read_string(data)
                 branch_versions[branch] = version
 
-        if content_type >= ContentType.CONTENT_TYPE_END:
+        if content_type == 0 or content_type >= ContentType.CONTENT_TYPE_END:
             raise PacketInvalidData("invalid ContentType", content_type)
 
         content_type = ContentType(content_type)
@@ -109,7 +109,7 @@ class ContentProtocol(TCPProtocol):
 
             if has_content_type_and_unique_id:
                 content_type, data = read_uint8(data)
-                if content_type >= ContentType.CONTENT_TYPE_END:
+                if content_type == 0 or content_type >= ContentType.CONTENT_TYPE_END:
                     raise PacketInvalidData("invalid ContentType", content_type)
                 content_type = ContentType(content_type)
                 content_info["content_type"] = content_type
