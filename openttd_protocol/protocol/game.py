@@ -8,6 +8,7 @@ from ..wire.read import (
     read_uint8,
     read_uint16,
     read_uint32,
+    read_uint64,
 )
 from ..wire.tcp import TCPProtocol
 from ..wire.write import (
@@ -56,8 +57,11 @@ class GameProtocol(TCPProtocol):
     def receive_PACKET_SERVER_GAME_INFO(source, data):
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 6:
+        if game_info_version < 1 or game_info_version > 7:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
+
+        if game_info_version >= 7:
+            ticks_playing, data = read_uint64(data)
 
         if game_info_version >= 6:
             newgrf_serialization_type, data = read_uint8(data)
@@ -133,6 +137,10 @@ class GameProtocol(TCPProtocol):
 
             is_dedicated, data = read_uint8(data)
 
+        # Estimate, where possible, for older versions.
+        if game_info_version < 7:
+            ticks_playing = max(0, (start_date - game_date) * 74)
+
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in SERVER_GAME_INFO; remaining: ", len(data))
 
@@ -155,6 +163,7 @@ class GameProtocol(TCPProtocol):
             "map_type": map_type,
             "gamescript_version": gamescript_version,
             "gamescript_name": gamescript_name,
+            "ticks_playing": ticks_playing,
         }
 
     @staticmethod

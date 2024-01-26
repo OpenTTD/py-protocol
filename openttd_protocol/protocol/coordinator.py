@@ -8,6 +8,7 @@ from ..wire.read import (
     read_uint8,
     read_uint16,
     read_uint32,
+    read_uint64,
 )
 from ..wire.tcp import TCPProtocol
 from ..wire.write import (
@@ -19,6 +20,7 @@ from ..wire.write import (
     write_uint8,
     write_uint16,
     write_uint32,
+    write_uint64,
 )
 
 log = logging.getLogger(__name__)
@@ -136,8 +138,11 @@ class CoordinatorProtocol(TCPProtocol):
 
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 6:
+        if game_info_version < 1 or game_info_version > 7:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
+
+        if game_info_version >= 7:
+            ticks_playing, data = read_uint64(data)
 
         if game_info_version >= 6:
             newgrf_serialization_type, data = read_uint8(data)
@@ -213,6 +218,10 @@ class CoordinatorProtocol(TCPProtocol):
 
             is_dedicated, data = read_uint8(data)
 
+        # Estimate, where possible, for older versions.
+        if game_info_version < 7:
+            ticks_playing = max(0, (start_date - game_date) * 74)
+
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in SERVER_UPDATE; remaining: ", len(data))
 
@@ -237,6 +246,7 @@ class CoordinatorProtocol(TCPProtocol):
             "map_type": map_type,
             "gamescript_version": gamescript_version,
             "gamescript_name": gamescript_name,
+            "ticks_playing": ticks_playing,
         }
 
     @staticmethod
@@ -248,7 +258,7 @@ class CoordinatorProtocol(TCPProtocol):
 
         game_info_version, data = read_uint8(data)
 
-        if game_info_version < 1 or game_info_version > 6:
+        if game_info_version < 1 or game_info_version > 7:
             raise PacketInvalidData("unknown game info version: ", game_info_version)
 
         openttd_version, data = read_string(data)
@@ -432,6 +442,9 @@ class CoordinatorProtocol(TCPProtocol):
 
             write_string(data, server.connection_string)
             write_uint8(data, game_info_version)
+
+            if game_info_version >= 7:
+                write_uint64(data, server.info["ticks_playing"])
 
             if game_info_version >= 6:
                 write_uint8(data, NewGRFSerializationType.NST_LOOKUP_ID)
