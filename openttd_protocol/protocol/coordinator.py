@@ -220,7 +220,7 @@ class CoordinatorProtocol(TCPProtocol):
 
         # Estimate, where possible, for older versions.
         if game_info_version < 7:
-            ticks_playing = max(0, (start_date - game_date) * 74)
+            ticks_playing = max(0, (game_date - start_date) * 74)
 
         if len(data) != 0:
             raise PacketInvalidData("more bytes than expected in SERVER_UPDATE; remaining: ", len(data))
