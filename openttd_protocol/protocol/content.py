@@ -48,6 +48,12 @@ class ContentType(enum.IntEnum):
     CONTENT_TYPE_END = 11
 
 
+class Availability(enum.IntEnum):
+    AVAILABILITY_SAVEGAMES_ONLY = 0
+    AVAILABILITY_NEW_GAMES = 1
+    AVAILABILITY_INVALID = 0xFF
+
+
 class ContentInfo:
     def __init__(self, content_id=None, content_type=None, unique_id=None, md5sum=None):
         super().__init__()
@@ -187,7 +193,19 @@ class ContentProtocol(TCPProtocol):
         return {"content_infos": content_infos}
 
     async def send_PACKET_CONTENT_SERVER_INFO(
-        self, content_type, content_id, filesize, name, version, url, description, unique_id, md5sum, dependencies, tags
+        self,
+        content_type,
+        content_id,
+        filesize,
+        name,
+        version,
+        url,
+        description,
+        unique_id,
+        md5sum,
+        dependencies,
+        tags,
+        availability=Availability.AVAILABILITY_INVALID,
     ):
         data = write_init(PacketContentType.PACKET_CONTENT_SERVER_INFO)
 
@@ -223,6 +241,8 @@ class ContentProtocol(TCPProtocol):
         write_uint8(data, len(tags))
         for tag in tags:
             write_string(data, tag)
+
+        write_uint8(data, availability)
 
         write_presend(data, SEND_TCP_COMPAT_MTU)
         return await self.send_packet(data)
