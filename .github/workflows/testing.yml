@@ -41,13 +41,13 @@ jobs:
 
   flake8:
     name: Flake8
-    uses: OpenTTD/actions/.github/workflows/rw-py-flake8.yml@v6
+    uses: OpenTTD/actions/.github/workflows/rw-py-flake8.yml@v7
     with:
       python-path: openttd_protocol
 
   black:
     name: Black
-    uses: OpenTTD/actions/.github/workflows/rw-py-black.yml@v6
+    uses: OpenTTD/actions/.github/workflows/rw-py-black.yml@v7
     with:
       python-version: 3.8
       python-path: openttd_protocol
@@ -81,4 +81,4 @@ jobs:
     - pytest
     # not codeql, as that reports its own status
 
-    uses: OpenTTD/actions/.github/workflows/rw-annotation-check.yml@v6
+    uses: OpenTTD/actions/.github/workflows/rw-annotation-check.yml@v7
